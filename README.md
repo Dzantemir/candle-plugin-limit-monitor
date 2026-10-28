@@ -4,7 +4,7 @@
 
 A compact Candle panel that shows **in real time** which GRBL input pins are
 active and **warns** you the moment a limit switch is pressed — colored
-per-axis indicators, a clear red warning line and an optional beep. When a
+per-axis indicators and a clear red warning line. When a
 switch is pressed, the panel can also offer one-click `$T` escape buttons for
 the [ALOE FIXED7](#t-escape-buttons-aloe-fixed7-firmware) firmware.
 
@@ -14,8 +14,7 @@ LIMIT: X !            <- warning line
 $T: [X-][X+]          <- escape buttons (pressed axes only)
 ```
 
-<img width="229" height="137" alt="{52F62AF7-1828-459F-BBA1-036FE14273E7}" src="https://github.com/user-attachments/assets/23538c62-f449-46b8-a5fd-6cbbba7c55fb" />
-
+<!-- ![panel screenshot](docs/screenshot.png) -->
 
 ## What it shows
 
@@ -28,8 +27,6 @@ $T: [X-][X+]          <- escape buttons (pressed axes only)
 
 Extra behavior:
 
-* a **beep** on the released → pressed edge of any limit switch (one beep per
-  event, re-armed after release; can be disabled in settings);
 * `H`/`R`/`S` pins (hold / reset / cycle start) are shown as a `Pn: ...` text line;
 * **no stale lies**: if status reports stop arriving for more than 2.5 s, or
   the port is closed, all indicators turn grey ("no data") instead of showing
@@ -83,7 +80,6 @@ an escape button).
 
 Plugin page in Candle settings:
 
-* **Beep when a limit switch becomes active** (default: on);
 * **Show $T escape buttons (ALOE FIXED7 firmware)** (default: on).
 
 Stored in `limit_monitor/settings.ini`.
@@ -91,7 +87,7 @@ Stored in `limit_monitor/settings.ini`.
 ## Development
 
 The plugin is plain QtScript + Qt Designer forms — no compilation. The logic
-(status parsing, indicator state machine, beep edge detection, `$T` readiness
+(status parsing, indicator state machine, `$T` readiness
 gating, settings round-trip) is covered by an offline test harness that stubs
 the Candle host API, including its direct-children-only widget name lookup:
 

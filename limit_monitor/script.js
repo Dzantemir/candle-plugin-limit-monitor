@@ -53,7 +53,6 @@ var statusSeen = false; // at least one status report received
 var stale = true;       // no fresh status report lately
 
 // Options (persisted in <plugin>/settings.ini)
-var optBeep = true;     // beep when a limit becomes active
 var optEscape = true;   // show $T escape buttons
 
 // Status reports are polled continuously by Candle; if none arrives
@@ -108,7 +107,6 @@ function loadOptions()
 {
     try {
         var s = settingsFile();
-        optBeep = toBool(s.value("beep", true), true);
         optEscape = toBool(s.value("escapeButtons", true), true);
     } catch (e) {
     }
@@ -118,7 +116,6 @@ function saveOptions()
 {
     try {
         var s = settingsFile();
-        s.setValue("beep", optBeep);
         s.setValue("escapeButtons", optEscape);
         s.sync();
     } catch (e) {
@@ -166,11 +163,6 @@ function escapeReady()
 {
     return (deviceState == DEVICE_IDLE || deviceState == DEVICE_ALARM) &&
            senderState == SENDER_STOPPED;
-}
-
-function tryBeep()
-{
-    try { QApplication.beep(); } catch (e) {}
 }
 
 // UI update -------------------------------------------------------------
@@ -281,12 +273,6 @@ function onAppStatusReceived(status)
     var m = /Pn:([A-Za-z]*)/.exec(String(status));
     var p = m ? m[1].toUpperCase() : "";
 
-    // Warn (beep) on the released -> pressed edge of any limit pin
-    if (optBeep &&
-        (p.indexOf("X") != -1 || p.indexOf("Y") != -1 || p.indexOf("Z") != -1) &&
-        !(pins.indexOf("X") != -1 || pins.indexOf("Y") != -1 || pins.indexOf("Z") != -1))
-        tryBeep();
-
     pins = p;
     statusSeen = true;
     stale = false;
@@ -321,14 +307,12 @@ function onZpClicked() { sendEscape("Z", "+"); }
 function onAppSettingsAboutToShow()
 {
     if (!uiSettings) return;
-    uiSettings.chkBeep.checked = optBeep;
     uiSettings.chkEscape.checked = optEscape;
 }
 
 function onAppSettingsAccepted()
 {
     if (!uiSettings) return;
-    optBeep = uiSettings.chkBeep.checked;
     optEscape = uiSettings.chkEscape.checked;
     saveOptions();
     updateUi();
@@ -337,7 +321,6 @@ function onAppSettingsAccepted()
 function onAppSettingsDefault()
 {
     if (!uiSettings || !uiSettings.visible) return;
-    uiSettings.chkBeep.checked = true;
     uiSettings.chkEscape.checked = true;
 }
 

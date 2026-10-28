@@ -12,16 +12,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QCheckBox" name="chkBeep">
-     <property name="text">
-      <string>Beep when a limit switch becomes active</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QCheckBox" name="chkEscape">
      <property name="text">
       <string>Show $T escape buttons (ALOE FIXED7 firmware)</string>

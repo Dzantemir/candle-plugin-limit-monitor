@@ -37,7 +37,7 @@ global.QUiLoader = class {
         esc[n] = new Widget(n);
       w.widEscape = esc;
     } else {
-      for (const n of ["chkBeep","chkEscape","lblNote"])
+      for (const n of ["chkEscape","lblNote"])
         w[n] = new Widget(n);
     }
     return w;
@@ -50,8 +50,6 @@ global.QFile = class {
   close() {}
 };
 global.QIODevice = { ReadOnly: 1 };
-let beeps = 0;
-global.QApplication = { beep: () => beeps++ };
 global.QTimer = class {
   constructor() { this.singleShot = false; this.timeout = Signal(); this.running = false; }
   start() { this.running = true; }
@@ -116,17 +114,12 @@ check(panel.widEscape.visible === false, "no escape row when released");
 
 // X limit pressed
 app.device.statusReceived.emit("<Idle|MPos:0.000,0.000,0.000|Pn:X|FS:0,0>");
-check(beeps === 1, "beep on released->pressed edge");
 check(panel.lblMsg.text === "LIMIT: X !", "limit warning text");
 check(panel.lblX.styleSheet.indexOf("#d32f2f") >= 0, "X chip red");
 check(panel.widEscape.visible === true, "escape row visible");
 check(panel.widEscape.cmdXm.visible && panel.widEscape.cmdXp.visible, "X escape buttons visible");
 check(!panel.widEscape.cmdYm.visible && !panel.widEscape.cmdZp.visible, "Y/Z escape buttons hidden");
 check(panel.widEscape.cmdXm.enabled, "X- enabled in Idle");
-
-// Repeated status with same pin: no second beep
-app.device.statusReceived.emit("<Idle|MPos:0,0,0|Pn:X>");
-check(beeps === 1, "no repeated beep while held");
 
 // Click X- sends $TX-
 panel.widEscape.cmdXm.clicked.emit();
@@ -153,9 +146,9 @@ app.device.statusReceived.emit("<Idle|MPos:0,0,0>");
 check(panel.lblMsg.text === "OK", "released again -> OK");
 check(panel.widEscape.visible === false, "escape row hidden after release");
 
-// Second press -> beep again (edge re-armed)
+// Second press is reported again after release
 app.device.statusReceived.emit("<Idle|MPos:0,0,0|Pn:Y>");
-check(beeps === 2, "beep re-armed after release");
+check(panel.lblMsg.text === "LIMIT: Y !", "second press reported");
 
 // Staleness
 staleTimer.fire();
@@ -172,17 +165,16 @@ check(panel.lblMsg.text === "not connected", "disconnect message");
 check(panel.widEscape.visible === false, "escape hidden after disconnect");
 
 // Settings roundtrip
-settings.chkBeep.checked = false; settings.chkEscape.checked = false;
+settings.chkEscape.checked = false;
 app.settingsAccepted.emit();
-check(settingsStore["beep"] === false && settingsStore["escapeButtons"] === false,
-      "options persisted");
+check(settingsStore["escapeButtons"] === false, "options persisted");
+settings.chkEscape.checked = true;
 app.settingsAboutToShow.emit();
-check(settings.chkBeep.checked === false, "settings page reflects stored options");
+check(settings.chkEscape.checked === false, "settings page reflects stored options");
 // Escape disabled by option: press X while connected
 app.device.state = 1; app.device.stateChanged.emit(1);
 app.device.statusReceived.emit("<Idle|MPos:0,0,0|Pn:X>");
 check(panel.widEscape.visible === false, "escape row suppressed by option");
-check(beeps === 2, "beep suppressed by option");
 
 console.log(failures === 0 ? "\nALL TESTS PASSED" : "\n" + failures + " FAILURES");
 process.exit(failures ? 1 : 0);

@@ -13,19 +13,19 @@ candle-plugin-limit-monitor
 Английский (рекомендуется для About, 243 символа):
 
 ```
-Compact Candle GRBL plugin: real-time limit switch monitor. Per-axis X/Y/Z pin indicators from the Pn: status field, probe/door pins, beep + red warning when a switch trips, optional one-click $T escape buttons (ALOE FIXED7 firmware).
+Compact Candle GRBL plugin: real-time limit switch monitor. Per-axis X/Y/Z pin indicators from the Pn: status field, probe/door pins, red warning when a switch trips, optional one-click $T escape buttons (ALOE FIXED7 firmware).
 ```
 
 Короткий вариант (если нужен лаконичнее):
 
 ```
-Real-time GRBL limit switch monitor panel for Candle: X/Y/Z pin indicators, beep + warning on trip, optional $T auto-escape buttons.
+Real-time GRBL limit switch monitor panel for Candle: X/Y/Z pin indicators, warning on trip, optional $T auto-escape buttons.
 ```
 
 Русский вариант:
 
 ```
-Компактный плагин Candle для GRBL: мониторинг концевиков в реальном времени. Индикаторы X/Y/Z по полю Pn: статус-репорта, входы щупа/дверцы, звук и красное предупреждение при срабатывании, кнопки съезда $T (прошивка ALOE FIXED7).
+Компактный плагин Candle для GRBL: мониторинг концевиков в реальном времени. Индикаторы X/Y/Z по полю Pn: статус-репорта, входы щупа/дверцы, красное предупреждение при срабатывании, кнопки съезда $T (прошивка ALOE FIXED7).
 ```
 
 Поле Website в About: можно оставить пустым или указать
@@ -75,7 +75,7 @@ First public release.
 - Real-time X/Y/Z limit switch indicators driven by the Pn: field of GRBL 1.1
   status reports (via the app.device.statusReceived plugin signal).
 - Probe (P) and door (D) pin indicators (informational).
-- Beep + red warning line on the released -> pressed edge of any limit switch.
+- Red warning line when any limit switch is pressed.
 - Stale-data honesty: indicators turn grey when status reports stop arriving.
 - Optional one-click $T escape buttons for the ALOE FIXED7 firmware
   (Idle/Alarm only, hidden while a program is streaming; harmless error:3 on

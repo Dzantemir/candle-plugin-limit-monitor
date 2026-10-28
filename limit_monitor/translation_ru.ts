@@ -68,6 +68,13 @@
     </message>
 </context>
 <context>
+    <name>frmMain</name>
+    <message>
+        <source>Limit switches</source>
+        <translation>Концевики</translation>
+    </message>
+</context>
+<context>
     <name>LimitMonitorPanel</name>
     <message>
         <source>Limit switches</source>
@@ -76,10 +83,6 @@
 </context>
 <context>
     <name>LimitMonitorSettings</name>
-    <message>
-        <source>Beep when a limit switch becomes active</source>
-        <translation>Звуковой сигнал при срабатывании концевика</translation>
-    </message>
     <message>
         <source>Show $T escape buttons (ALOE FIXED7 firmware)</source>
         <translation>Показывать кнопки съезда $T (прошивка ALOE FIXED7)</translation>
