@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LimitMonitorPanel</class>
+ <widget class="QWidget" name="LimitMonitorPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>180</width>
+    <height>72</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Limit switches</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="spacing">
+    <number>3</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="layoutPins">
+     <property name="spacing">
+      <number>3</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="lblX">
+       <property name="text">
+        <string notr="true">X</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>18</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblY">
+       <property name="text">
+        <string notr="true">Y</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>18</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblZ">
+       <property name="text">
+        <string notr="true">Z</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>18</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblP">
+       <property name="text">
+        <string notr="true">P</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>18</width>
+         <height>18</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblD">
+       <property name="text">
+        <string notr="true">D</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>18</width>
+         <height>18</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="spacerPins">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblMsg">
+     <property name="text">
+      <string notr="true">&#8212;</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="widEscape" native="true">
+     <layout class="QHBoxLayout" name="layoutEscape">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <property name="spacing">
+       <number>3</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lblEsc">
+        <property name="text">
+         <string notr="true">$T:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdXm">
+        <property name="text">
+         <string notr="true">X&#8722;</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdXp">
+        <property name="text">
+         <string notr="true">X+</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdYm">
+        <property name="text">
+         <string notr="true">Y&#8722;</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdYp">
+        <property name="text">
+         <string notr="true">Y+</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdZm">
+        <property name="text">
+         <string notr="true">Z&#8722;</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cmdZp">
+        <property name="text">
+         <string notr="true">Z+</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>22</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerEscape">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LimitMonitorSettings</class>
+ <widget class="QWidget" name="LimitMonitorSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>140</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QCheckBox" name="chkBeep">
+     <property name="text">
+      <string>Beep when a limit switch becomes active</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="chkEscape">
+     <property name="text">
+      <string>Show $T escape buttons (ALOE FIXED7 firmware)</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblNote">
+     <property name="text">
+      <string>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7 firmware: the axis slowly backs off the pressed switch (up to 10 mm + pull-off) entirely inside the firmware. On stock GRBL these commands are rejected with error:3 and cause no motion.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="spacerBottom">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
