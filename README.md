@@ -14,7 +14,7 @@ LIMIT: X !            <- warning line
 $T: [X-][X+]          <- escape buttons (pressed axes only)
 ```
 
-<!-- ![panel screenshot](docs/screenshot.png) -->
+<img width="229" height="137" alt="{52F62AF7-1828-459F-BBA1-036FE14273E7}" src="https://github.com/user-attachments/assets/23538c62-f449-46b8-a5fd-6cbbba7c55fb" />
 
 ## What it shows
 
