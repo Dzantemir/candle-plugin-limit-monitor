@@ -22,8 +22,10 @@ $T: [X-][X+]
 
 ## $T escape buttons (ALOE FIXED7+ firmware)
 
-While a limit switch is pressed, a `$T:` row appears with buttons for the
-pressed axes only (`X-`/`X+`, ...). A button sends `$TX-`, `$TX+`, `$TY-`... —
+While a limit switch is pressed, a `$T:` block appears with buttons for the
+pressed axes only, laid out in per-axis pairs (`X-`/`X+`, `Y-`/`Y+`,
+`Z-`/`Z+` on separate rows), so the panel never grows wider than the narrow
+dock column even when all axes trigger at once. A button sends `$TX-`, `$TX+`, `$TY-`... —
 the auto-escape command of the **ALOE FIXED7+** firmware: the axis slowly
 (at `$24`) backs off the switch (up to 10 mm), then pulls off by `$27` —
 entirely inside the firmware.
