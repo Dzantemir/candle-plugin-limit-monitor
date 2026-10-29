@@ -141,7 +141,7 @@
    </item>
    <item>
     <widget class="QWidget" name="widEscape" native="true">
-     <layout class="QHBoxLayout" name="layoutEscape">
+     <layout class="QGridLayout" name="layoutEscape">
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -157,92 +157,92 @@
       <property name="spacing">
        <number>3</number>
       </property>
-      <item>
+      <item row="0" column="0" rowspan="3" alignment="Qt::AlignLeft|Qt::AlignTop">
        <widget class="QLabel" name="lblEsc">
         <property name="text">
          <string notr="true">$T:</string>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="0" column="1">
        <widget class="QPushButton" name="cmdXm">
         <property name="text">
          <string notr="true">X&#8722;</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="0" column="2">
        <widget class="QPushButton" name="cmdXp">
         <property name="text">
          <string notr="true">X+</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="1" column="1">
        <widget class="QPushButton" name="cmdYm">
         <property name="text">
          <string notr="true">Y&#8722;</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="1" column="2">
        <widget class="QPushButton" name="cmdYp">
         <property name="text">
          <string notr="true">Y+</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="2" column="1">
        <widget class="QPushButton" name="cmdZm">
         <property name="text">
          <string notr="true">Z&#8722;</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="2" column="2">
        <widget class="QPushButton" name="cmdZp">
         <property name="text">
          <string notr="true">Z+</string>
         </property>
         <property name="maximumSize">
          <size>
-          <width>30</width>
+          <width>34</width>
           <height>22</height>
          </size>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="0" column="3" rowspan="3">
        <spacer name="spacerEscape">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
