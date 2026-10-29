@@ -6,7 +6,7 @@ A compact Candle panel that shows **in real time** which GRBL input pins are
 active and **warns** you the moment a limit switch is pressed — colored
 per-axis indicators and a clear red warning line. When a
 switch is pressed, the panel can also offer one-click `$T` escape buttons for
-the [ALOE FIXED7](#t-escape-buttons-aloe-fixed7-firmware) firmware.
+the [ALOE FIXED7+](#t-escape-buttons-aloe-fixed7-firmware) firmware.
 
 ```
 [X][Y][Z] [P][D]      <- pin indicators
@@ -14,7 +14,7 @@ LIMIT: X !            <- warning line
 $T: [X-][X+]          <- escape buttons (pressed axes only)
 ```
 
-<img width="229" height="137" alt="{52F62AF7-1828-459F-BBA1-036FE14273E7}" src="https://github.com/user-attachments/assets/23538c62-f449-46b8-a5fd-6cbbba7c55fb" />
+<img width="229" height="137" alt="limit monitor panel" src="https://github.com/user-attachments/assets/23538c62-f449-46b8-a5fd-6cbbba7c55fb" />
 
 ## What it shows
 
@@ -22,7 +22,7 @@ $T: [X-][X+]          <- escape buttons (pressed axes only)
 |---|---|
 | **X / Y / Z** | axis limit switches: green = released, **red = pressed**, grey = no data |
 | **P** | probe pin active (amber, informational — no alarm) |
-| **D** | safety door pin active (amber, informational) |
+| **D** | safety door pin: grey "not monitored" unless enabled in the settings (GRBL reports `Pn:D` only while it considers the door OPEN and only with `ENABLE_SAFETY_DOOR_INPUT_PIN` built in, so a green chip without a real sensor would be a false "all ok") |
 | status line | `OK` / `LIMIT: X Y !` / `no status...` / `not connected` |
 
 Extra behavior:
@@ -32,17 +32,23 @@ Extra behavior:
   the port is closed, all indicators turn grey ("no data") instead of showing
   the last known state.
 
-## $T escape buttons (ALOE FIXED7 firmware)
+## $T escape buttons (ALOE FIXED7+ firmware)
 
-While a limit switch is pressed, a `$T:` row appears with buttons **only for
-the pressed axes** (`X-`/`X+`, ...). A click sends `$TX-`, `$TX+`, `$TY-`, ... —
-the auto-escape command of the ALOE FIXED7 GRBL fork: the axis slowly backs
+While a limit switch is pressed, a `$T:` block appears with buttons **only for
+the pressed axes**, laid out in per-axis pairs (`X-`/`X+`, `Y-`/`Y+`, `Z-`/`Z+`
+on separate rows) so the panel fits the narrow dock column even when all axes
+trigger at once. A click sends `$TX-`, `$TX+`, `$TY-`, ... —
+the auto-escape command of the ALOE FIXED7+ GRBL fork: the axis slowly backs
 off the switch at the homing feed rate `$24` (up to 10 mm), then pulls off by
 `$27` — the whole move runs inside the firmware, no jogging involved.
 
 * The buttons are enabled only in **Idle/Alarm** state and while no g-code
   program is streaming (same readiness gating as the official plugins).
-* On **stock GRBL** the command is harmless: the controller replies `error:3`
+* In **Alarm** the button first sends a soft reset (Ctrl-X) automatically and
+  the `$T` follows after the controller reboots — required to leave the stock
+  `ALARM:1` critical lock, which discards line commands until a realtime
+  reset. The chain aborts if the switch is released meanwhile.
+* On **stock GRBL** the command is harmless: the controller replies `error:2`
   and nothing moves.
 * The whole row can be hidden on the plugin settings page.
 
@@ -70,17 +76,22 @@ an escape button).
 * a current Candle build with JS plugin support — the `candleplugins` folder
   and the `app.device.statusReceived` script signal (current Denvi/Candle
   sources);
-* **GRBL 1.1+** — the `Pn:` status report field format;
+* **GRBL 1.1+** — the `Pn:` status report field format, with
+  `REPORT_FIELD_PIN_STATE` enabled in config.h (default in stock GRBL;
+  compiled out, the plugin cannot tell "all released" from "not reported");
 * hard limits (`$21`) are **not** required: `Pn:` reports the physical pin
   state regardless of `$5`/`$21`/`$10` settings;
-* the `$T` buttons are useful with the ALOE FIXED7 firmware only (harmless
+* the `$T` buttons are useful with the ALOE FIXED7+ firmware only (harmless
   elsewhere).
 
 ## Settings
 
 Plugin page in Candle settings:
 
-* **Show $T escape buttons (ALOE FIXED7 firmware)** (default: on).
+* **Show $T escape buttons (ALOE FIXED7+ firmware)** (default: on).
+* **Monitor the safety door pin (Pn:D)** (default: off) — enable only if the
+  machine actually has a door sensor and the firmware was built with
+  `ENABLE_SAFETY_DOOR_INPUT_PIN`; then amber = open, green = closed.
 
 Stored in `limit_monitor/settings.ini`.
 
