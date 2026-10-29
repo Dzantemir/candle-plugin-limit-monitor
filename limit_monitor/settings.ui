@@ -7,14 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>140</height>
+    <height>230</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QCheckBox" name="chkEscape">
      <property name="text">
-      <string>Show $T escape buttons (ALOE FIXED7 firmware)</string>
+      <string>Show $T escape buttons (ALOE FIXED7+ firmware)</string>
      </property>
      <property name="checked">
       <bool>true</bool>
@@ -24,7 +24,27 @@
    <item>
     <widget class="QLabel" name="lblNote">
      <property name="text">
-      <string>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7 firmware: the axis slowly backs off the pressed switch (up to 10 mm + pull-off) entirely inside the firmware. On stock GRBL these commands are rejected with error:3 and cause no motion.</string>
+      <string>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7+ firmware: the axis slowly backs off the pressed switch (up to 10 mm + pull-off) entirely inside the firmware. In Alarm state the button first sends a soft reset (Ctrl-X) automatically to leave the hard-limit critical lock. On stock GRBL these commands are rejected with error:2 and cause no motion.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="chkDoor">
+     <property name="text">
+      <string>Monitor the safety door pin (Pn:D)</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblNoteDoor">
+     <property name="text">
+      <string>GRBL reports the door pin only while it considers the door OPEN, and only if the firmware was built with ENABLE_SAFETY_DOOR_INPUT_PIN (disabled in stock GRBL and in ALOE FIXED7+). Leave this off if the machine has no door sensor - otherwise the panel would show a false green "all ok" for a contact nobody is actually reading.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

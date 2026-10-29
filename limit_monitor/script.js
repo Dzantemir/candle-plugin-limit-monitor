@@ -7,8 +7,8 @@
 // exactly how the indicators are driven.
 //
 // Extra (optional): when a limit switch is pressed, the panel offers
-// $TX-/$TX+/... buttons - the auto-escape command of the ALOE FIXED7
-// firmware. On stock GRBL the command is harmless (error:3, no motion).
+// $TX-/$TX+/... buttons - the auto-escape command of the ALOE FIXED7+
+// firmware (FIXED7+). On stock GRBL the command is harmless (error:2, no motion).
 //
 // Structure and host API follow the official candleplugins examples
 // and the spindle_laser plugin (config.ini + script.js + widget.ui).
@@ -39,6 +39,20 @@ var uiSettings = null;
 var widEscape = null;
 var escButtons = null; // [["X", btnMinus, btnPlus], ...]
 
+// One escape command per status window: set on send, cleared by the next
+// status report / device state event. Blocks accidental double-clicks;
+// the firmware additionally no-ops repeats ([MSG:Disabled] on a released
+// axis).
+var escapeSent = false;
+
+// Escape requested while in Alarm: the stock ALARM:1 critical lock discards
+// line commands until a realtime reset, so the button first sends Ctrl-X and
+// the $T command is sent by this timer after the controller reboots.
+var pendingEscape = null; // { axis: "X", dir: "+" }
+var ESCAPE_RESET_DELAY_MS = 1500;
+var pendingTimer = new QTimer();
+pendingTimer.singleShot = true;
+
 // Host state (DeviceState/SenderState enums of frmMain)
 var DEVICE_IDLE = 1;
 var DEVICE_ALARM = 2;
@@ -54,6 +68,8 @@ var stale = true;       // no fresh status report lately
 
 // Options (persisted in <plugin>/settings.ini)
 var optEscape = true;   // show $T escape buttons
+var optDoor = false;    // treat the safety-door pin as monitored (machine
+                        // actually has a door sensor; see updateUi comment)
 
 // Status reports are polled continuously by Candle; if none arrives
 // within this time the indicators fall back to "unknown".
@@ -70,6 +86,7 @@ var STYLE_UNKNOWN = "QLabel { background: #eeeeee; color: #9e9e9e; border: 1px s
 var STYLE_MSG_ALARM = "QLabel { color: #d32f2f; font-weight: bold; }";
 var STYLE_MSG_OK = "QLabel { color: #2e7d32; }";
 var STYLE_MSG_DIM = "QLabel { color: #9e9e9e; }";
+var STYLE_MSG_INFO = "QLabel { color: #b36b00; }";
 
 // Helpers --------------------------------------------------------------
 
@@ -108,6 +125,7 @@ function loadOptions()
     try {
         var s = settingsFile();
         optEscape = toBool(s.value("escapeButtons", true), true);
+        optDoor = toBool(s.value("doorSensor", false), false);
     } catch (e) {
     }
 }
@@ -117,6 +135,7 @@ function saveOptions()
     try {
         var s = settingsFile();
         s.setValue("escapeButtons", optEscape);
+        s.setValue("doorSensor", optDoor);
         s.sync();
     } catch (e) {
     }
@@ -194,8 +213,20 @@ function updateUi()
             trFill(qsTr("Z limit switch: %1"), { "%1": pinActive("Z") && !unknown ? qsTr("PRESSED") : st }));
     setChip(uiPanel.lblP, pinActive("P"), unknown, STYLE_ON_INFO,
             trFill(qsTr("Probe pin: %1"), { "%1": pinActive("P") && !unknown ? qsTr("ACTIVE") : st }));
-    setChip(uiPanel.lblD, pinActive("D"), unknown, STYLE_ON_INFO,
-            trFill(qsTr("Door pin: %1"), { "%1": pinActive("D") && !unknown ? qsTr("ACTIVE") : st }));
+    // Door pin: GRBL includes "D" in Pn: only when it considers the door
+    // OPEN, and only if the firmware was built with
+    // ENABLE_SAFETY_DOOR_INPUT_PIN (disabled in stock config.h and in
+    // ALOE FIXED7+). The plugin cannot tell "door closed" from "no door
+    // sensor at all", so unless the user confirms in the settings that the
+    // machine has a sensor, the chip stays grey "not monitored" instead of
+    // a false green "all ok".
+    if (!optDoor) {
+        setChip(uiPanel.lblD, false, true, STYLE_ON_INFO,
+                qsTr("Door pin: not monitored. Enable it in the plugin settings if the machine has a door sensor (the firmware must be built with ENABLE_SAFETY_DOOR_INPUT_PIN)."));
+    } else {
+        setChip(uiPanel.lblD, pinActive("D"), unknown, STYLE_ON_INFO,
+                trFill(qsTr("Door pin: %1 (GRBL reports it only while it considers the door OPEN)"), { "%1": pinActive("D") && !unknown ? qsTr("ACTIVE") : st }));
+    }
 
     // Message
     if (!connected()) {
@@ -208,20 +239,24 @@ function updateUi()
         uiPanel.lblMsg.text = trFill(qsTr("LIMIT: %1 !"), { "%1": axes.join(" ") });
         uiPanel.lblMsg.styleSheet = STYLE_MSG_ALARM;
     } else if (pins.length > 0) {
-        // Only non-limit pins (P/D/H/R/S) are active
+        // Only non-limit pins (P/D/H/R/S) are active: informational amber,
+        // not the green "all clear" (an open door is not "OK").
         uiPanel.lblMsg.text = "Pn: " + pins;
-        uiPanel.lblMsg.styleSheet = STYLE_MSG_OK;
+        uiPanel.lblMsg.styleSheet = STYLE_MSG_INFO;
     } else {
         uiPanel.lblMsg.text = qsTr("OK");
         uiPanel.lblMsg.styleSheet = STYLE_MSG_OK;
     }
 
-    // Raw report as panel tooltip
-    uiPanel.lblMsg.toolTip = pins.length > 0 && !unknown
-        ? "Pn: " + pins
-        : qsTr("GRBL reports no active input pins");
+    // Raw report as panel tooltip. When the status is unknown (disconnected,
+    // stale, nothing received yet) say so honestly instead of implying that
+    // all pins are released.
+    uiPanel.lblMsg.toolTip = unknown
+        ? qsTr("Status unavailable")
+        : (pins.length > 0 ? "Pn: " + pins
+                           : qsTr("GRBL reports no active input pins"));
 
-    // Escape row ($T buttons of the ALOE FIXED7 firmware)
+    // Escape row ($T buttons of the ALOE FIXED7+ firmware)
     if (!widEscape) return;
     var showEscape = optEscape && anyLimit && connected();
     widEscape.visible = showEscape;
@@ -236,9 +271,9 @@ function updateUi()
                 if (!btn) continue;
                 var dir = (j == 1) ? "-" : "+";
                 btn.visible = pressed;
-                btn.enabled = pressed && ready;
+                btn.enabled = pressed && ready && !pendingEscape;
                 btn.toolTip = ready
-                    ? trFill(qsTr("Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7: slow move up to 10 mm + pull-off, done in firmware)"),
+                    ? trFill(qsTr("Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to 10 mm + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock."),
                              { "%1": ax, "%2": dir })
                     : qsTr("Available in Idle/Alarm state when no program is running");
             }
@@ -251,7 +286,10 @@ function updateUi()
 function onAppDeviceStateChanged(state)
 {
     deviceState = state;
+    escapeSent = false;
     if (state == -1) {
+        pendingEscape = null;
+        pendingTimer.stop();
         // Disconnected: forget everything we knew about the pins
         pins = "";
         statusSeen = false;
@@ -275,6 +313,7 @@ function onAppStatusReceived(status)
 
     pins = p;
     statusSeen = true;
+    escapeSent = false;
     stale = false;
     staleTimer.stop();
     staleTimer.start(STALE_MS);
@@ -291,8 +330,51 @@ function onStaleTimeout()
 
 function sendEscape(axis, dir)
 {
+    // Re-validate everything at click time (defense in depth: the firmware
+    // itself also refuses - [MSG:Disabled] no-op for a released axis,
+    // error:8 while running, error:5 with $28=0).
+    if (escapeSent || pendingEscape) return; // one command/chain at a time
+    readStates();
+    if (!connected() || !statusSeen || stale) return;
+    if (!pinActive(axis)) return;
     if (!escapeReady()) return;
+    if (deviceState == DEVICE_ALARM) {
+        // ALARM may be the stock ALARM:1 critical lock, which discards line
+        // commands until a realtime reset. Send Ctrl-X now and the $T after
+        // the controller reboots (a soft reset in Alarm is always safe: no
+        // motion is running - senderState is checked above).
+        pendingEscape = { axis: axis, dir: dir };
+        escapeSent = true;
+        try {
+            app.device.sendRuntimeCommand("\x18");
+        } catch (e) {
+            pendingEscape = null;
+            escapeSent = false;
+            return;
+        }
+        pendingTimer.start(ESCAPE_RESET_DELAY_MS);
+        updateUi();
+        return;
+    }
+    escapeSent = true;
     app.device.sendCommands("$T" + axis + dir);
+}
+
+// Second half of the Alarm chain: the controller has rebooted, re-validate
+// against the fresh state and send the stored $T command.
+function onPendingEscapeTimeout()
+{
+    var p = pendingEscape;
+    pendingEscape = null;
+    escapeSent = false;
+    if (!p) { updateUi(); return; }
+    readStates();
+    if (connected() && statusSeen && !stale &&
+        pinActive(p.axis) && escapeReady()) {
+        escapeSent = true;
+        app.device.sendCommands("$T" + p.axis + p.dir);
+    }
+    updateUi();
 }
 
 function onXmClicked() { sendEscape("X", "-"); }
@@ -308,12 +390,14 @@ function onAppSettingsAboutToShow()
 {
     if (!uiSettings) return;
     uiSettings.chkEscape.checked = optEscape;
+    uiSettings.chkDoor.checked = optDoor;
 }
 
 function onAppSettingsAccepted()
 {
     if (!uiSettings) return;
     optEscape = uiSettings.chkEscape.checked;
+    optDoor = uiSettings.chkDoor.checked;
     saveOptions();
     updateUi();
 }
@@ -322,6 +406,7 @@ function onAppSettingsDefault()
 {
     if (!uiSettings || !uiSettings.visible) return;
     uiSettings.chkEscape.checked = true;
+    uiSettings.chkDoor.checked = false;
 }
 
 // Plugin entry points --------------------------------------------------------
@@ -334,6 +419,7 @@ function init()
     loadOptions();
 
     staleTimer.timeout.connect(onStaleTimeout);
+    pendingTimer.timeout.connect(onPendingEscapeTimeout);
 
     connectSignal(app.device.stateChanged, onAppDeviceStateChanged);
     connectSignal(app.sender.stateChanged, onAppSenderStateChanged);
