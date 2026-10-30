@@ -46,10 +46,16 @@ var escButtons = null; // [["X", btnMinus, btnPlus], ...]
 var escapeSent = false;
 
 // Escape requested while in Alarm: the stock ALARM:1 critical lock discards
-// line commands until a realtime reset, so the button first sends Ctrl-X and
-// the $T command is sent by this timer after the controller reboots.
-var pendingEscape = null; // { axis: "X", dir: "+" }
-var ESCAPE_RESET_DELAY_MS = 1500;
+// line commands until a realtime reset, so the button first sends Ctrl-X.
+// Candle then parses the "Grbl 1.1h" boot banner (frmMain::dataIsReset) and
+// flips the device state to -1 (DeviceUnknown) - INCLUDING for the reset this
+// plugin itself sent. The chain records that -1 as "reboot seen" and sends
+// the stored $T on the FIRST status report after it (the controller is
+// provably back up). The timer is only a watchdog: if the banner never
+// reaches us it falls back to one timed validation, and a real disconnect
+// (state stays -1, no statuses) makes that validation fail and abort.
+var pendingEscape = null; // { axis: "X", dir: "+", resetSeen: bool }
+var ESCAPE_CHAIN_TIMEOUT_MS = 3000;
 var pendingTimer = new QTimer();
 pendingTimer.singleShot = true;
 
@@ -288,9 +294,18 @@ function onAppDeviceStateChanged(state)
     deviceState = state;
     escapeSent = false;
     if (state == -1) {
-        pendingEscape = null;
-        pendingTimer.stop();
-        // Disconnected: forget everything we knew about the pins
+        // -1 arrives both on a real disconnect AND when Candle parses the
+        // "Grbl" boot banner after a reset - including the soft reset this
+        // plugin itself sends in the Alarm chain. While a chain is pending,
+        // -1 is the expected reboot marker: record it and keep waiting for
+        // the first fresh status. A real disconnect is caught by the
+        // watchdog timer (its validation fails while the state stays -1).
+        if (pendingEscape) {
+            pendingEscape.resetSeen = true;
+        } else {
+            pendingTimer.stop();
+        }
+        // Status unknown either way: forget everything we knew about the pins
         pins = "";
         statusSeen = false;
         stale = true;
@@ -317,6 +332,14 @@ function onAppStatusReceived(status)
     stale = false;
     staleTimer.stop();
     staleTimer.start(STALE_MS);
+    // Second half of the Alarm chain: the first status after the reboot
+    // banner proves the controller is back up - decide right now instead of
+    // guessing with a fixed delay. Statuses that arrive before the banner
+    // (still in flight from before the reset) are ignored on purpose.
+    if (pendingEscape && pendingEscape.resetSeen) {
+        finishPendingEscape(); // calls updateUi() itself
+        return;
+    }
     updateUi();
 }
 
@@ -340,10 +363,11 @@ function sendEscape(axis, dir)
     if (!escapeReady()) return;
     if (deviceState == DEVICE_ALARM) {
         // ALARM may be the stock ALARM:1 critical lock, which discards line
-        // commands until a realtime reset. Send Ctrl-X now and the $T after
-        // the controller reboots (a soft reset in Alarm is always safe: no
-        // motion is running - senderState is checked above).
-        pendingEscape = { axis: axis, dir: dir };
+        // commands until a realtime reset. Send Ctrl-X now; the $T goes out
+        // on the first status report after Candle sees the boot banner (a
+        // soft reset in Alarm is always safe: no motion is running -
+        // senderState is checked above).
+        pendingEscape = { axis: axis, dir: dir, resetSeen: false };
         escapeSent = true;
         try {
             app.device.sendRuntimeCommand("\x18");
@@ -352,7 +376,7 @@ function sendEscape(axis, dir)
             escapeSent = false;
             return;
         }
-        pendingTimer.start(ESCAPE_RESET_DELAY_MS);
+        pendingTimer.start(ESCAPE_CHAIN_TIMEOUT_MS); // watchdog, not the trigger
         updateUi();
         return;
     }
@@ -360,12 +384,15 @@ function sendEscape(axis, dir)
     app.device.sendCommands("$T" + axis + dir);
 }
 
-// Second half of the Alarm chain: the controller has rebooted, re-validate
-// against the fresh state and send the stored $T command.
-function onPendingEscapeTimeout()
+// Second half of the Alarm chain: re-validate against the fresh state and
+// send the stored $T command - or abort (switch released during the reboot,
+// device gone, sender busy). Called from the first post-banner status report
+// (normal path) and from the watchdog timer (fallback path).
+function finishPendingEscape()
 {
     var p = pendingEscape;
     pendingEscape = null;
+    pendingTimer.stop();
     escapeSent = false;
     if (!p) { updateUi(); return; }
     readStates();
@@ -376,6 +403,11 @@ function onPendingEscapeTimeout()
     }
     updateUi();
 }
+
+// Watchdog: the boot banner (or the first status after it) never arrived in
+// time. Candle missed the banner -> the validation passes and the $T is sent
+// anyway; real disconnect -> the validation fails and the chain aborts.
+function onPendingEscapeTimeout() { finishPendingEscape(); }
 
 function onXmClicked() { sendEscape("X", "-"); }
 function onXpClicked() { sendEscape("X", "+"); }
