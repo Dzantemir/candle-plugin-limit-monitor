@@ -45,6 +45,18 @@ var escButtons = null; // [["X", btnMinus, btnPlus], ...]
 // axis).
 var escapeSent = false;
 
+// A $T command was sent and its ok/error response has not arrived yet.
+// Unlike escapeSent (re-armed by every status report), this flag is cleared
+// only by the actual response - or by a disconnect (5th-audit hardening).
+var escapeInFlight = false;
+
+// Firmware identification: null = unknown, true = ALOE fork ($I contains
+// "ALOE_FIXED"), false = foreign firmware. The $T buttons and the Alarm
+// Ctrl-X chain are suppressed when the firmware is known to be foreign -
+// a plain limit monitor must never soft-reset somebody else's controller.
+var fwAloe = null;
+var fwProbeSent = false;
+
 // Escape requested while in Alarm: the stock ALARM:1 critical lock discards
 // line commands until a realtime reset, so the button first sends Ctrl-X.
 // Candle then parses the "Grbl 1.1h" boot banner (frmMain::dataIsReset) and
@@ -98,8 +110,11 @@ var STYLE_MSG_INFO = "QLabel { color: #b36b00; }";
 
 function trFill(text, map)
 {
+    // split/join, NOT String.replace: the templates repeat placeholders
+    // ("sends $T%1%2" after "the %1 switch") and replace() only substitutes
+    // the first occurrence (5th-audit find: tooltips showed a literal $T%1%2).
     var s = String(text);
-    for (var k in map) s = s.replace(k, String(map[k]));
+    for (var k in map) s = s.split(k).join(String(map[k]));
     return s;
 }
 
@@ -121,7 +136,20 @@ function toBool(v, def)
     return def;
 }
 
+// Settings live in Candle's writable data directory (app.dataLocation =
+// QStandardPaths::AppDataLocation). The old location - settings.ini inside
+// the plugin folder - is read once as a fallback: under C:\Program Files
+// the plugin folder is not writable and the old file silently never
+// persisted (5th-audit find).
 function settingsFile()
+{
+    var dir = "";
+    try { dir = String(app.dataLocation); } catch (e) {}
+    if (!dir) return new QSettings(pluginPath + "/settings.ini", QSettings.IniFormat);
+    return new QSettings(dir + "/plugin_limit_monitor.ini", QSettings.IniFormat);
+}
+
+function legacySettingsFile()
 {
     return new QSettings(pluginPath + "/settings.ini", QSettings.IniFormat);
 }
@@ -130,8 +158,9 @@ function loadOptions()
 {
     try {
         var s = settingsFile();
-        optEscape = toBool(s.value("escapeButtons", true), true);
-        optDoor = toBool(s.value("doorSensor", false), false);
+        var legacy = legacySettingsFile();
+        optEscape = toBool(s.value("escapeButtons", legacy.value("escapeButtons", true)), true);
+        optDoor = toBool(s.value("doorSensor", legacy.value("doorSensor", false)), false);
     } catch (e) {
     }
 }
@@ -239,8 +268,12 @@ function updateUi()
         uiPanel.lblMsg.text = qsTr("not connected");
         uiPanel.lblMsg.styleSheet = STYLE_MSG_DIM;
     } else if (unknown) {
-        uiPanel.lblMsg.text = qsTr("no status...");
-        uiPanel.lblMsg.styleSheet = STYLE_MSG_DIM;
+        // During the $T motion the firmware (like stock homing) does not
+        // answer ? polls, so the status goes stale by design - say what is
+        // actually happening instead of a confusing "no status".
+        uiPanel.lblMsg.text = escapeInFlight ? qsTr("running $T escape...")
+                                             : qsTr("no status...");
+        uiPanel.lblMsg.styleSheet = escapeInFlight ? STYLE_MSG_INFO : STYLE_MSG_DIM;
     } else if (anyLimit) {
         uiPanel.lblMsg.text = trFill(qsTr("LIMIT: %1 !"), { "%1": axes.join(" ") });
         uiPanel.lblMsg.styleSheet = STYLE_MSG_ALARM;
@@ -264,7 +297,7 @@ function updateUi()
 
     // Escape row ($T buttons of the ALOE FIXED7+ firmware)
     if (!widEscape) return;
-    var showEscape = optEscape && anyLimit && connected();
+    var showEscape = optEscape && anyLimit && connected() && fwAloe !== false;
     widEscape.visible = showEscape;
     if (showEscape && escButtons) {
         var ready = escapeReady();
@@ -277,7 +310,7 @@ function updateUi()
                 if (!btn) continue;
                 var dir = (j == 1) ? "-" : "+";
                 btn.visible = pressed;
-                btn.enabled = pressed && ready && !pendingEscape;
+                btn.enabled = pressed && ready && !pendingEscape && !escapeInFlight;
                 btn.toolTip = ready
                     ? trFill(qsTr("Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to 10 mm + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock."),
                              { "%1": ax, "%2": dir })
@@ -305,6 +338,9 @@ function onAppDeviceStateChanged(state)
         } else {
             pendingTimer.stop();
         }
+        escapeInFlight = false; // no response will come across a reset/disconnect
+        fwProbeSent = false;    // re-identify the firmware after reboot/reconnect
+        fwAloe = null;
         // Status unknown either way: forget everything we knew about the pins
         pins = "";
         statusSeen = false;
@@ -332,6 +368,12 @@ function onAppStatusReceived(status)
     stale = false;
     staleTimer.stop();
     staleTimer.start(STALE_MS);
+    // One firmware probe per connection: ask $I and look for the ALOE build
+    // tag in the response (handled in onAppResponseReceived).
+    if (!fwProbeSent && optEscape) {
+        fwProbeSent = true;
+        try { app.device.sendCommand("$I", -100, false); } catch (e) {}
+    }
     // Second half of the Alarm chain: the first status after the reboot
     // banner proves the controller is back up - decide right now instead of
     // guessing with a fixed delay. Statuses that arrive before the banner
@@ -341,6 +383,23 @@ function onAppStatusReceived(status)
         return;
     }
     updateUi();
+}
+
+// Line responses to commands (frmMain::responseReceived, wired to every
+// plugin). Used to close the $T in-flight window by the actual ok/error and
+// to parse the $I probe.
+function onAppResponseReceived(command, index, response)
+{
+    var cmd = String(command);
+    if (cmd.indexOf("$T") == 0) {
+        escapeInFlight = false;
+        updateUi();
+        return;
+    }
+    if (cmd == "$I") {
+        fwAloe = String(response).indexOf("ALOE_FIXED") >= 0;
+        updateUi();
+    }
 }
 
 function onStaleTimeout()
@@ -356,7 +415,8 @@ function sendEscape(axis, dir)
     // Re-validate everything at click time (defense in depth: the firmware
     // itself also refuses - [MSG:Disabled] no-op for a released axis,
     // error:8 while running, error:5 with $28=0).
-    if (escapeSent || pendingEscape) return; // one command/chain at a time
+    if (escapeSent || escapeInFlight || pendingEscape) return; // one command/chain at a time
+    if (fwAloe === false) return; // foreign firmware: never $T, never Ctrl-X
     readStates();
     if (!connected() || !statusSeen || stale) return;
     if (!pinActive(axis)) return;
@@ -381,6 +441,7 @@ function sendEscape(axis, dir)
         return;
     }
     escapeSent = true;
+    escapeInFlight = true;
     app.device.sendCommands("$T" + axis + dir);
 }
 
@@ -399,6 +460,7 @@ function finishPendingEscape()
     if (connected() && statusSeen && !stale &&
         pinActive(p.axis) && escapeReady()) {
         escapeSent = true;
+        escapeInFlight = true;
         app.device.sendCommands("$T" + p.axis + p.dir);
     }
     updateUi();
@@ -456,6 +518,7 @@ function init()
     connectSignal(app.device.stateChanged, onAppDeviceStateChanged);
     connectSignal(app.sender.stateChanged, onAppSenderStateChanged);
     connectSignal(app.device.statusReceived, onAppStatusReceived);
+    connectSignal(app.device.responseReceived, onAppResponseReceived);
 
     connectSignal(app.settingsAboutToShow, onAppSettingsAboutToShow);
     connectSignal(app.settingsAccepted, onAppSettingsAccepted);
@@ -468,6 +531,12 @@ function createPanelWidget()
     if (f.open(QIODevice.ReadOnly)) {
         uiPanel = loader.load(f);
         f.close();
+        // Defensive: a damaged/incompatible form must not throw out of the
+        // plugin entry point (4th-audit hardening).
+        if (!uiPanel || !uiPanel.widEscape || !uiPanel.lblMsg) {
+            uiPanel = null;
+            return null;
+        }
 
         // The $T buttons are nested inside widEscape: resolve them through
         // the container (direct-children-only lookup in QtScript).
@@ -500,6 +569,7 @@ function createSettingsWidget()
     if (f.open(QIODevice.ReadOnly)) {
         uiSettings = loader.load(f);
         f.close();
+        if (!uiSettings || !uiSettings.chkEscape) { uiSettings = null; }
     }
     return uiSettings;
 }

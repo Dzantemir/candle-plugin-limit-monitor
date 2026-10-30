@@ -27,14 +27,16 @@ pressed axes only, laid out in per-axis pairs (`X-`/`X+`, `Y-`/`Y+`,
 `Z-`/`Z+` on separate rows), so the panel never grows wider than the narrow
 dock column even when all axes trigger at once. A button sends `$TX-`, `$TX+`, `$TY-`... —
 the auto-escape command of the **ALOE FIXED7+** firmware: the axis slowly
-(at `$24`) backs off the switch (up to 10 mm), then pulls off by `$27` —
+(at `$24`) backs off the switch (up to the `$29` budget, default 10 mm), then pulls off by `$27` —
 entirely inside the firmware.
 
 * Buttons are enabled only in **Idle/Alarm** and while no program is streaming.
-* In **Alarm** the button first sends a soft reset (Ctrl-X) automatically and
-  the `$T` follows after the controller reboots — this is required to leave
-  the stock `ALARM:1` critical lock, which discards line commands until a
-  realtime reset. The chain aborts if the switch is released meanwhile.
+* In **Alarm** the button first sends a soft reset (Ctrl-X) automatically —
+  required to leave the stock `ALARM:1` critical lock, which discards line
+  commands until a realtime reset. The `$T` is sent on the **first status
+  report after Candle sees the boot banner** (so the controller is provably
+  back up); a watchdog aborts the chain if the controller never comes back,
+  and the chain also aborts if the switch is released meanwhile.
 * On **stock GRBL** the command is harmless: the controller replies `error:2`,
   no motion occurs.
 * The buttons can be hidden on the plugin settings page.
@@ -63,13 +65,25 @@ enabled (`REPORT_FIELD_PIN_STATE` in config.h — enabled by default in stock
 GRBL; with it compiled out the plugin cannot tell "all released" from
 "not reported" and will show released pins).
 
+### Firmware check
+
+On every connection the plugin sends a single `$I` and looks for the ALOE
+build tag in the reply. On a foreign firmware the `$T` buttons and the
+Alarm-state Ctrl-X chain are fully disabled — the plugin then only monitors
+the pins. While a `$T` escape is running GRBL (like stock homing) does not
+answer `?` polls, so the panel shows an explicit *"running $T escape..."*
+message instead of "no status". Verified with ALOE FIXED9/FIXED10.
+
 ## Settings
 
 * **Show $T escape buttons** (default on).
 * **Monitor the safety door pin (Pn:D)** (default off — see the **D** chip
   note above).
 
-Stored in `limit_monitor/settings.ini`.
+Stored in Candle's data directory as `plugin_limit_monitor.ini`
+(`QStandardPaths::AppDataLocation` — writable even when Candle is installed
+under `C:\Program Files`). An old `limit_monitor/settings.ini` from previous
+versions is read once as a fallback, so the options migrate automatically.
 
 ## Files
 

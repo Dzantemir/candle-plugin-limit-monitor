@@ -63,6 +63,10 @@
         <translation>нет данных</translation>
     </message>
     <message>
+        <source>running $T escape...</source>
+        <translation>выполняется съезд $T...</translation>
+    </message>
+    <message>
         <source>no status...</source>
         <translation>нет статуса...</translation>
     </message>

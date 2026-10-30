@@ -14,7 +14,7 @@ LIMIT: X !            <- warning line
 $T: [X-][X+]          <- escape buttons (pressed axes only)
 ```
 
-<!-- ![panel screenshot](docs/screenshot.png) -->
+<img width="229" height="137" alt="panel" src="https://github.com/user-attachments/assets/23538c62-f449-46b8-a5fd-6cbbba7c55fb" />
 
 ## What it shows
 
@@ -39,7 +39,7 @@ the pressed axes**, laid out in per-axis pairs (`X-`/`X+`, `Y-`/`Y+`, `Z-`/`Z+`
 on separate rows) so the panel fits the narrow dock column even when all axes
 trigger at once. A click sends `$TX-`, `$TX+`, `$TY-`, ... —
 the auto-escape command of the ALOE FIXED7+ GRBL fork: the axis slowly backs
-off the switch at the homing feed rate `$24` (up to 10 mm), then pulls off by
+off the switch at the homing feed rate `$24` (up to the `$29` budget, default 10 mm), then pulls off by
 `$27` — the whole move runs inside the firmware, no jogging involved.
 
 * The buttons are enabled only in **Idle/Alarm** state and while no g-code
@@ -87,6 +87,15 @@ the escape chain from Alarm).
 * the `$T` buttons are useful with the ALOE FIXED7+ firmware only (harmless
   elsewhere).
 
+### Firmware check
+
+On every connection the plugin sends a single `$I` and looks for the ALOE
+build tag in the reply. On a foreign firmware the `$T` buttons and the
+Alarm-state Ctrl-X chain are fully disabled — the plugin then only monitors
+the pins. While a `$T` escape is running GRBL (like stock homing) does not
+answer `?` polls, so the panel shows an explicit *"running $T escape..."*
+message instead of "no status". Verified with ALOE FIXED9/FIXED10.
+
 ## Settings
 
 Plugin page in Candle settings:
@@ -96,7 +105,10 @@ Plugin page in Candle settings:
   machine actually has a door sensor and the firmware was built with
   `ENABLE_SAFETY_DOOR_INPUT_PIN`; then amber = open, green = closed.
 
-Stored in `limit_monitor/settings.ini`.
+Stored in Candle's data directory as `plugin_limit_monitor.ini`
+(`QStandardPaths::AppDataLocation` — writable even when Candle is installed
+under `C:\Program Files`). An old `limit_monitor/settings.ini` from previous
+versions is read once as a fallback, so the options migrate automatically.
 
 ## Development
 
