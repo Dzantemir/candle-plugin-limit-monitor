@@ -67,12 +67,18 @@ GRBL; with it compiled out the plugin cannot tell "all released" from
 
 ### Firmware check
 
-On every connection the plugin sends a single `$I` and looks for the ALOE
-build tag in the reply. On a foreign firmware the `$T` buttons and the
-Alarm-state Ctrl-X chain are fully disabled — the plugin then only monitors
-the pins. While a `$T` escape is running GRBL (like stock homing) does not
-answer `?` polls, so the panel shows an explicit *"running $T escape..."*
-message instead of "no status". Verified with ALOE FIXED9/FIXED10.
+On every connection the plugin sends `$I` and looks for the ALOE build tag
+in the reply. GRBL answers `$I` only from Idle/Alarm (elsewhere it replies
+`error:8`), so the probe is sent only in those states and is retried until
+a real `[VER:...]` reply arrives — an error reply is never mistaken for a
+verdict. The `$T` buttons and the Alarm-state Ctrl-X chain are enabled only
+after the ALOE firmware is **confirmed**; on a foreign or still-unknown
+firmware the plugin only monitors the pins (the identity survives the
+chain's own Ctrl-X reboot, but not a real disconnect). While a `$T` escape
+is running GRBL (like stock homing) does not answer `?` polls, so the panel
+shows an explicit *"running $T escape..."* message instead of "no status";
+a lost `$T` response unlocks the buttons by a 90 s watchdog. Verified with
+ALOE FIXED12.
 
 ## Settings
 

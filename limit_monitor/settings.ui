@@ -24,7 +24,7 @@
    <item>
     <widget class="QLabel" name="lblNote">
      <property name="text">
-      <string>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7+ firmware: the axis slowly backs off the pressed switch (up to 10 mm + pull-off) entirely inside the firmware. In Alarm state the button first sends a soft reset (Ctrl-X) automatically to leave the hard-limit critical lock. On stock GRBL these commands are rejected with error:2 and cause no motion.</string>
+      <string>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7+ firmware: the axis slowly backs off the pressed switch (up to the $29 budget, default 10 mm, + pull-off) entirely inside the firmware. In Alarm state the button first sends a soft reset (Ctrl-X) automatically to leave the hard-limit critical lock. On stock GRBL these commands are rejected with error:2 and cause no motion.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

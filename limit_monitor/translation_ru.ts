@@ -19,8 +19,8 @@
         <translation>Вход Door (дверца): не отслеживается. Включите в настройках плагина, если на станке есть датчик двери (прошивка должна быть собрана с ENABLE_SAFETY_DOOR_INPUT_PIN).</translation>
     </message>
     <message>
-        <source>Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to 10 mm + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock.</source>
-        <translation>Съезд с концевика %1 в сторону %2: отправляет $T%1%2 (прошивка ALOE FIXED7+: медленный ход до 10 мм + отъезд, целиком в прошивке). Из Alarm кнопка сначала шлёт мягкий сброс (Ctrl-X), чтобы выйти из критической блокировки хард-лимита.</translation>
+        <source>Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to the $29 budget, default 10 mm, + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock.</source>
+        <translation>Съезд с концевика %1 в сторону %2: отправляет $T%1%2 (прошивка ALOE FIXED7+: медленный ход в пределах бюджета $29, по умолчанию 10 мм, + отъезд, целиком в прошивке). Из Alarm кнопка сначала шлёт мягкий сброс (Ctrl-X), чтобы выйти из критической блокировки хард-лимита.</translation>
     </message>
     <message>
         <source>Status unavailable</source>
@@ -108,8 +108,8 @@
         <translation>Показывать кнопки съезда $T (прошивка ALOE FIXED7+)</translation>
     </message>
     <message>
-        <source>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7+ firmware: the axis slowly backs off the pressed switch (up to 10 mm + pull-off) entirely inside the firmware. In Alarm state the button first sends a soft reset (Ctrl-X) automatically to leave the hard-limit critical lock. On stock GRBL these commands are rejected with error:2 and cause no motion.</source>
-        <translation>Кнопки $T отправляют команды $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ прошивки ALOE FIXED7+: ось сама медленно съезжает с нажатого концевика (до 10 мм + отъезд $27) целиком внутри прошивки. Из состояния Alarm кнопка сначала автоматически шлёт мягкий сброс (Ctrl-X), чтобы выйти из критической блокировки хард-лимита. На стоковом GRBL команда просто отклоняется с error:2, без движения.</translation>
+        <source>The $T buttons send $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ commands of the ALOE FIXED7+ firmware: the axis slowly backs off the pressed switch (up to the $29 budget, default 10 mm, + pull-off) entirely inside the firmware. In Alarm state the button first sends a soft reset (Ctrl-X) automatically to leave the hard-limit critical lock. On stock GRBL these commands are rejected with error:2 and cause no motion.</source>
+        <translation>Кнопки $T отправляют команды $TX-/$TX+/$TY-/$TY+/$TZ-/$TZ+ прошивки ALOE FIXED7+: ось сама медленно съезжает с нажатого концевика (в пределах бюджета $29, по умолчанию 10 мм, + отъезд $27) целиком внутри прошивки. Из состояния Alarm кнопка сначала автоматически шлёт мягкий сброс (Ctrl-X), чтобы выйти из критической блокировки хард-лимита. На стоковом GRBL команда просто отклоняется с error:2, без движения.</translation>
     </message>
 </context>
 </TS>

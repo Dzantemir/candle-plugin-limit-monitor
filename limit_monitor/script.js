@@ -95,6 +95,13 @@ var STALE_MS = 2500;
 var staleTimer = new QTimer();
 staleTimer.singleShot = true;
 
+// Watchdog for escapeInFlight: if the ok/error response to $T is lost
+// (6th audit), release the lock instead of blocking the buttons until a
+// reconnect. 90 s covers a slow escape (low $24, large $29) with margin.
+var ESCAPE_INFLIGHT_TIMEOUT_MS = 90000;
+var escTimer = new QTimer();
+escTimer.singleShot = true;
+
 // Styles for the pin "chips"
 var STYLE_ON_LIMIT = "QLabel { background: #d32f2f; color: white; border: 1px solid #8e0000; border-radius: 3px; font-weight: bold; }";
 var STYLE_ON_INFO = "QLabel { background: #ef9a00; color: white; border: 1px solid #a66a00; border-radius: 3px; font-weight: bold; }";
@@ -310,9 +317,9 @@ function updateUi()
                 if (!btn) continue;
                 var dir = (j == 1) ? "-" : "+";
                 btn.visible = pressed;
-                btn.enabled = pressed && ready && !pendingEscape && !escapeInFlight;
+                btn.enabled = pressed && ready && !pendingEscape && !escapeInFlight && fwAloe === true;
                 btn.toolTip = ready
-                    ? trFill(qsTr("Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to 10 mm + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock."),
+                    ? trFill(qsTr("Escape from the %1 switch towards %2: sends $T%1%2 (ALOE FIXED7+ firmware: slow move up to the $29 budget, default 10 mm, + pull-off, done in firmware). In Alarm the button first sends a soft reset (Ctrl-X) to leave the hard-limit critical lock."),
                              { "%1": ax, "%2": dir })
                     : qsTr("Available in Idle/Alarm state when no program is running");
             }
@@ -339,8 +346,12 @@ function onAppDeviceStateChanged(state)
             pendingTimer.stop();
         }
         escapeInFlight = false; // no response will come across a reset/disconnect
+        escTimer.stop();
         fwProbeSent = false;    // re-identify the firmware after reboot/reconnect
-        fwAloe = null;
+        // Our own Alarm-chain Ctrl-X reboots a controller we have just
+        // verified - keep the identity so the chain can finish; a real
+        // disconnect means the controller may have been swapped: forget it.
+        if (!pendingEscape) { fwAloe = null; }
         // Status unknown either way: forget everything we knew about the pins
         pins = "";
         statusSeen = false;
@@ -369,8 +380,13 @@ function onAppStatusReceived(status)
     staleTimer.stop();
     staleTimer.start(STALE_MS);
     // One firmware probe per connection: ask $I and look for the ALOE build
-    // tag in the response (handled in onAppResponseReceived).
-    if (!fwProbeSent && optEscape) {
+    // tag in the response (handled in onAppResponseReceived). GRBL answers
+    // $I only from Idle/Alarm - everywhere else (Run/Hold/Jog/Door) the
+    // reply is error:8, which must not be mistaken for "foreign firmware"
+    // (6th audit). So probe only in those states; error replies re-arm the
+    // probe for a later status.
+    if (!fwProbeSent && optEscape &&
+        (app.device.state == 1 || app.device.state == 2)) {
         fwProbeSent = true;
         try { app.device.sendCommand("$I", -100, false); } catch (e) {}
     }
@@ -393,11 +409,31 @@ function onAppResponseReceived(command, index, response)
     var cmd = String(command);
     if (cmd.indexOf("$T") == 0) {
         escapeInFlight = false;
+        escTimer.stop();
         updateUi();
         return;
     }
     if (cmd == "$I") {
-        fwAloe = String(response).indexOf("ALOE_FIXED") >= 0;
+        var r = String(response);
+        if (r.indexOf("[VER:") >= 0) {
+            // A real build-info reply: now the verdict is trustworthy.
+            fwAloe = r.indexOf("ALOE_FIXED") >= 0;
+        } else {
+            // error:8 (not Idle/Alarm) or similar - no verdict; retry on a
+            // later status in a probe-friendly state.
+            fwProbeSent = false;
+        }
+        updateUi();
+    }
+}
+
+// The $T response never arrived (lost line, host glitch): release the
+// in-flight lock so the buttons do not stay dead until a reconnect.
+function onEscInFlightTimeout()
+{
+    escTimer.stop();
+    if (escapeInFlight) {
+        escapeInFlight = false;
         updateUi();
     }
 }
@@ -416,7 +452,7 @@ function sendEscape(axis, dir)
     // itself also refuses - [MSG:Disabled] no-op for a released axis,
     // error:8 while running, error:5 with $28=0).
     if (escapeSent || escapeInFlight || pendingEscape) return; // one command/chain at a time
-    if (fwAloe === false) return; // foreign firmware: never $T, never Ctrl-X
+    if (fwAloe !== true) return; // $T/Ctrl-X only on a confirmed ALOE firmware
     readStates();
     if (!connected() || !statusSeen || stale) return;
     if (!pinActive(axis)) return;
@@ -442,6 +478,8 @@ function sendEscape(axis, dir)
     }
     escapeSent = true;
     escapeInFlight = true;
+    escTimer.stop();
+    escTimer.start(ESCAPE_INFLIGHT_TIMEOUT_MS);
     app.device.sendCommands("$T" + axis + dir);
 }
 
@@ -457,10 +495,12 @@ function finishPendingEscape()
     escapeSent = false;
     if (!p) { updateUi(); return; }
     readStates();
-    if (connected() && statusSeen && !stale &&
+    if (connected() && statusSeen && !stale && fwAloe === true &&
         pinActive(p.axis) && escapeReady()) {
         escapeSent = true;
         escapeInFlight = true;
+        escTimer.stop();
+        escTimer.start(ESCAPE_INFLIGHT_TIMEOUT_MS);
         app.device.sendCommands("$T" + p.axis + p.dir);
     }
     updateUi();
@@ -514,6 +554,7 @@ function init()
 
     staleTimer.timeout.connect(onStaleTimeout);
     pendingTimer.timeout.connect(onPendingEscapeTimeout);
+    escTimer.timeout.connect(onEscInFlightTimeout);
 
     connectSignal(app.device.stateChanged, onAppDeviceStateChanged);
     connectSignal(app.sender.stateChanged, onAppSenderStateChanged);
